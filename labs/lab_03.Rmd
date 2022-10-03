@@ -1,0 +1,160 @@
+---
+title: "lab_03"
+author: "Derek Willis"
+date: "8/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries and establish settings
+```{r}
+# Turn off scientific notation
+options(scipen=999)
+
+# Load the tidyverse here
+library(tidyverse)
+# Load janitor here
+library(janitor)
+```
+
+## Load data
+```{r}
+# Write code to load MD slice of FEC House candidate contribution data and call it md_contribs.
+
+# The data is called lab_03.rds, and is in the data folder alongside lab_03.Rmd (this data notebook)
+md_contribs <- read_rds("lab_03.rds")
+
+```
+
+## Answer questions
+
+Q1: Which seven cities in Maryland had the largest _number_ of contributions from donors? How many did each have? To answer this question, you'll have to clean the messy "contributor_city" field.
+
+Note: To answer this question, you'll need to see every variation of the "contributor_city" for the top seven cities, which you should identify through some initial analysis. Then find variations of them and change those variations into the most common version.
+
+A1:
+Baltimore: 6748
+Bethesda: 5860
+Silver Spring: 4659
+Chevy Chase: 3261
+Potomac: 2302
+Rockville: 2213
+Annapolis: 2001
+```{r}
+md_contribs %>% 
+  get_dupes()
+```
+```{r}
+# Write your code in this codeblock.
+cities_dirty <- md_contribs %>% 
+  group_by(contributor_city) %>% 
+  summarise(
+    count=n()
+  ) %>% 
+  arrange(desc(count))
+```
+```{r}
+ cities_clean <- cities_dirty %>%
+  mutate(contributor_city = str_to_title(contributor_city)) %>% 
+  mutate(contributor_city = case_when(
+    contributor_city == 'Balitmore' ~ 'Baltimore',
+    contributor_city == 'Gwynn Oak, Balto Cty' ~ 'Baltimore',
+    contributor_city == 'Gwynn Oak' ~ 'Baltimore', #google said gwynn oak is a neighborhood entirely in baltimore so i added it
+    contributor_city == 'Bethsda' ~ 'Bethesda',
+    contributor_city == 'Bethesa' ~ 'Bethesda', #google had north bethesda as a different place so i left it out
+    contributor_city == 'Silver Springs' ~ 'Silver Spring',
+    contributor_city == 'Silver Spring, Md' ~ 'Silver Spring',
+    contributor_city == 'Sliver Spring' ~ 'Silver Spring',
+    contributor_city == 'Chevy Chase Villag' ~ 'Chevy Chase',
+    contributor_city == 'Potamic' ~ 'Potomac',
+    contributor_city == '11509 Lake Potomac Drive' ~ 'Potomac', #google had north potomac as a different place so i left it out
+    contributor_city == 'Annnapolis' ~ 'Annapolis',
+    contributor_city == 'Anapolis' ~ 'Annapolis',
+    contributor_city == 'Annapolid' ~ 'Annapolis',
+    contributor_city == 'Anretiredpolis' ~ 'Annapolis',
+    TRUE ~ contributor_city
+  ))
+  
+```
+Q2: Find the 5-digit ZIP code in Maryland that had the highest total amount of contributions (by dollar value). Where is that zip code and what kind of area is it? Which committee is the largest recipient of money from that zip code? How many of the top five recipients are Maryland candidates?
+
+A2: 
+The 20815 zip code had the highest total amount of contributions with $1804495.47. The 20815 zip code is in Montgomery County right on the boarder of Washington D.C. Some of the cities that make up 20815 are Chevy Chase, Bethesda, Martin's Additions and Silver Spring. This area is notorious for being very wealthy, so it makes sense why they would donate so much money. The committee that received the most money from 20815 was "Jamie Raskin for congress." Only two of the five recipients (Jamie Raskin and Heather Mizeur) are/were Maryland candidates.
+
+```{r}
+# Hint
+# First, create a dataframe that shows the top 5-digit ZIP code by total dollar amount
+md_contribs_5_zip <- md_contribs %>%
+  mutate(contributor_zip = as.character(contributor_zip)) %>% 
+  mutate(contributor_zip = str_sub(contributor_zip, start=1L, end=5L))
+```
+```{r}
+amount_by_zip <- md_contribs_5_zip %>% 
+  group_by(contributor_zip) %>% 
+  summarise(total_sum = 
+    sum(contribution_receipt_amount)
+  )
+```
+```{r}
+# Second, use the top ZIP code in the dataframe you just created and create a new dataframe that shows the committee that got the most money from that ZIP code.
+zip_20815 <- md_contribs_5_zip %>% 
+  filter(contributor_zip == '20815') %>% 
+  select(contributor_zip, contribution_receipt_amount, committee_name)
+```
+```{r}
+zip_20815_aggr <- zip_20815 %>% 
+  group_by(committee_name) %>% 
+  summarise(total_sum = 
+            sum(contribution_receipt_amount)
+    ) %>% 
+  arrange(desc(total_sum))
+```
+
+Q3: Let's look at top individual donors to House campaigns. Write code to generate a list of top donors using name and city, adding up the total amount of contributions. One of the top few donors has a very strong connection to the U.S. House - who is that and what does he do? How does his donation pattern differ from the second-largest donor, and what can you say about that second-largest donor?
+
+Feel free to add any interesting "color" (little interesting details) you find in your research.  
+
+A3: The top donor is democratic congressman, David Trone. He represents Maryland's sixth congressional district. I was not sure how to make the dataset show where each of these contributions went or what patterns they, however I was at least able to clean up the contributor names. 
+
+```{r}
+
+# Hint
+# First, create a dataframe of top individual contributors
+indiv_contributors_dirty <- md_contribs_5_zip %>% 
+  group_by(contributor_name) %>% 
+  summarize(total_sum = 
+              sum(contribution_receipt_amount)
+            ) 
+```
+```{r}
+indiv_contributors_clean <- indiv_contributors_dirty %>% 
+  mutate(contributor_name = str_to_title(contributor_name)) %>% 
+  mutate(contributor_name = case_when(
+    contributor_name == 'Trone, David J.' ~ 'Trone, David',
+    contributor_name == 'Trone, David J' ~ 'Trone, David',
+    contributor_name == 'Trone, David John' ~ 'Trone, David',
+    contributor_name == 'Trone, Rep. David J (Md-06)' ~ 'Trone, David',
+    contributor_name == 'Mason, Juanita Mrs' ~ 'Mason, Juanita',
+    contributor_name == 'Rosenblum, Bruce E.' ~ 'Rosenblum, Bruce',
+    contributor_name == 'Rosenblum, Bruce E' ~ 'Rosenblum, Bruce',
+    contributor_name == 'Klein, Michael F. Mr.' ~ 'Klein, Michael',
+    contributor_name == 'Klein, Michael F.' ~ 'Klein, Michael',
+    contributor_name == 'Klein, Michael Mr.' ~ 'Klein, Michael',
+    contributor_name == 'Thompson, Dana Ms.' ~ 'Thompson, Dana',
+    contributor_name == 'Thompson, Dana J.' ~ 'Thompson, Dana',
+    TRUE ~ contributor_name
+  ))
+```
+```{r}
+top_5_contributors_clean <- indiv_contributors_clean %>%
+  filter(contributor_name == 'Trone, David' | contributor_name == 'Mason, Juanita' | contributor_name == 'Rosenblum, Bruce' | contributor_name == 'Klein, Michael' | contributor_name == 'Thomson, Dana')
+  
+```
+```{r}
+  
+  # Second, use information from that dataframe to examine individual donations from the original md_contribs dataframe.
+
+```
