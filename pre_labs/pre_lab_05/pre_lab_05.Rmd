@@ -92,7 +92,12 @@ cleaned_dc_food %>%
 ```
 ### Task 7: Use a different refinr method to clean the city_clean field.
 **Task** Run the following code to use the n_gram_merge() function to clean the data, then group by city_clean and city to examine cities that start with A. Look at the differences. Does the changes it made vary substantially from the previous use of key_collision_merge?
-**Answer** No, mo, recipient_clean, everything())
+**Answer** No, recipient_name and recipient_clean seem the same, at least for the ones that I saw.
+
+```{r}
+cleaned_dc_food <- dc_food %>%
+  mutate(recipient_clean=n_gram_merge(recipient_name)) %>%
+  select(recipient_name, recipient_clean, everything())
 
 cleaned_dc_food
 
